@@ -7,6 +7,7 @@
 - Create Build - buidpack strategy
 - Submit Build
 - Add Logging
+  - ibmcloud ce buildrun logs --name <build name>
 
 - Create application
 - ibmcloud ce project select --name <project name>

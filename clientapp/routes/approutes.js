@@ -16,4 +16,9 @@ router.get('/', function(req, res, next) {
 });
 
 
+router.get('/mqput', function(req, res, next) {
+  debug_info('Routing to /mqput');
+  res.render('mqput', {status: ''});
+});
+
 module.exports = router;
