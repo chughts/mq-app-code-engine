@@ -13,11 +13,16 @@
   },
 
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "pug": "^3.0.2",
+    "morgan": "~1.9.1",
+    "http-errors": "~1.8.0",
+    "cookie-parser": "~1.4.4",
+    "axios": "^0.21.1"
   },
 
   "scripts": {
-    "start": "node server.js"
+    "start": "DEBUG=mqapp* node server.js"
   },
 
   "type": "commonjs"
