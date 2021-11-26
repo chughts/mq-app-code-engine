@@ -53,10 +53,17 @@ router.post('/api/mqput', (req, res, next) => {
 
   debug_info("Attempting MQ Put for ", putRequest);
 
-  mqclient.check();
-
-  res.json({
-    status: "Still working on it..."
+  mqclient.put(putRequest)
+  .then((statusMsg) => {
+    res.json({
+      status: statusMsg
+    });
+  })
+  .catch((err) => {
+    debug_warn("Put has failed with error : ", err);
+    res.status(500).send({
+      error: err
+    });
   });
 
 });
