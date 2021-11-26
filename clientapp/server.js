@@ -7,6 +7,10 @@ debug_info("Process env settings are: ");
 debug_info("LD_LIBRARY_PATH : ", process.env.LD_LIBRARY_PATH);
 debug_info("MQ_INSTALLATION_PATH : ", process.env.MQ_INSTALLATION_PATH);
 
+process.env.LD_LIBRARY_PATH='/app/node_modules/ibmmq/redist/lib64'
+process.env.MQ_INSTALLATION_PATH='/app/node_modules/ibmmq/redist'
+
+
 const app = require('./mqapp');
 const http = require('http');
 
