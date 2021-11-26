@@ -66,13 +66,24 @@ class MQClient {
       this.makeConnectionPromise()
       .then(() => {
         debug_info("Connected to MQ");
-        reject("not complete yet");
+        return this.performPut(message, quantity);
+      })
+      .then(() => {
+        debug_info("Message Posted");
+        resolve('Message was posted successfully');
       })
       .catch((err) => {
         debug_warn("Failed to connect to MQ");
         debug_info(err);
-
-        reject(err);
+        //If there is only a partial connection / open then clean up.
+        //and signal tht there was a problem
+        this.performCleanUp()
+        .then(() => {
+          reject(err)
+        })
+        .catch((cleanupErr) => {
+          reject(err);
+        })
       });
 
     });
@@ -89,20 +100,32 @@ class MQClient {
       })
       .then((hconn) => {
         debug_info("Connected to MQ");
-
-
-        reject("Not yet ready - 003");
+        this[_HCONNKEY] = hconn;
+        return this.performOpen();
+      })
+      .then((hObj) => {
+        debug_info("MQ Queue is open");
+        this[_HOBJKEY] = hObj;
+        resolve();
       })
       .catch((err) => {
         debug_warn("Error establising connection to MQ");
         debug_warn(err);
         reject(err);
       });
-
-
     });
+    debug_info("Establishing Connection to MQ");
   }
 
+  performOpen() {
+    let od = new mq.MQOD();
+    od.ObjectName = MQDetails.QUEUE_NAME;
+    od.ObjectType = MQC.MQOT_Q;
+
+    let openOptions = MQC.MQOO_OUTPUT | MQC.MQOO_INPUT_AS_Q_DEF | MQC.MQOO_BROWSE;
+
+    return mq.OpenPromise(this[_HCONNKEY], od, openOptions);
+  }
 
 
   makeConnectionPromise() {
@@ -178,6 +201,65 @@ class MQClient {
 
     return points.join(',');
   }
+
+
+  performPut(message, quantity) {
+    var promises = [];
+
+    for (let i = 0; i < quantity; i++) {
+      let iteration = i + 1;
+      let msgObject = {
+        'Message' : message,
+        'Count' : '' + iteration + ' of ' + quantity,
+        'Sent': '' + new Date()
+      }
+      let msg = JSON.stringify(msgObject);
+
+      var mqmd = new mq.MQMD(); // Defaults are fine.
+      var pmo = new mq.MQPMO();
+
+      // Describe how the Put should behave
+      pmo.Options = MQC.MQPMO_NO_SYNCPOINT |
+        MQC.MQPMO_NEW_MSG_ID |
+        MQC.MQPMO_NEW_CORREL_ID;
+
+      promises.push( mq.PutPromise(this[_HOBJKEY], mqmd, pmo, msg) );
+    }
+    return Promise.all(promises);
+  }
+
+  performCleanUp() {
+    return new Promise((resolve, reject) => {
+      let closePromise = Promise.resolve();
+      if (null !== this[_HOBJKEY]) {
+        debug_info("Will be attempting MQ Close");
+        closePromise = mq.ClosePromise(this[_HOBJKEY], 0);
+      }
+      closePromise
+      .then(() => {
+        debug_info("Will be attempting MQ Disconnect");
+        this[_HOBJKEY] = null;
+        let disconnectPromise = Promise.resolve();
+        if (null !== this[_HCONNKEY]) {
+           disconnectPromise = mq.DiscPromise(this[_HCONNKEY]);
+        }
+        return disconnectPromise;
+      })
+      .then(() => {
+        this[_HCONNKEY] = null;
+        debug_info("Clean up was successfull");
+        resolve();
+      })
+      .catch((err) => {
+        debug_warn("Error in MQ connection cleanup ", err);
+        this[_HOBJKEY] = null;
+        this[_HCONNKEY] = null;
+        // For now no, need to signal failure
+        reject(err);
+      })
+    });
+  }
+
 
 
 }
