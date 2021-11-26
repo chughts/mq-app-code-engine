@@ -7,8 +7,8 @@ let debug_warn = require('debug')('mqapp-approutes:warn');
 
 const APPTITLE = 'MQ apps on CodeEngine';
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
+// GET home page
+router.get('/', (req, res, next) => {
   debug_info('Routing to /')
   res.render('index', {
     title: APPTITLE
@@ -16,9 +16,26 @@ router.get('/', function(req, res, next) {
 });
 
 
-router.get('/mqput', function(req, res, next) {
+// GET the put page, containing form for messages to send
+router.get('/mqput', (req, res, next) => {
   debug_info('Routing to /mqput');
   res.render('mqput', {status: ''});
 });
+
+
+// PUT API expects input containing message and
+// quantity.
+router.post('/api/mqput', (req, res, next) => {
+  debug_info('Routing to /api/mqput');
+
+  let data = req.body;
+  debug_info('MQ Put Request submitted for ', data);
+
+  res.json({
+    status: "Still working on it..."
+  });
+
+});
+
 
 module.exports = router;

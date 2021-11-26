@@ -16,7 +16,7 @@ mqPageOps.handlersUI = function() {
     let data = {};
     data.message = message;
     data.quantity = quantity;
-    console.log("perform Put Request will go here, when ready!");
+    console.log("performing Put Request for ", data);
     $.ajax({
       type: 'POST',
       url: '/api/mqput',
