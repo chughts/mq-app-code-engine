@@ -2,6 +2,13 @@
 
 ## Steps
 
+- Create QueueManager
+- Get
+  - App Credentials
+  - Connection Details
+  - Public Certificate
+
+
 - Create Code Engine Project
 - Set up image repository
 - Create Build - buidpack strategy
