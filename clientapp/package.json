@@ -13,7 +13,7 @@
   },
 
   "dependencies": {
-    "ibmmq": "^0.9.17",
+    "ibmmq": "^0.9.19",
     "express": "^4.17.1",
     "pug": "^3.0.2",
     "morgan": "~1.9.1",
