@@ -85,9 +85,13 @@ class MQClient {
       this.buildCNO()
       .then((cno) => {
         debug_info("CNO Built");
+        return mq.ConnxPromise(MQDetails.QMGR, cno);
+      })
+      .then((hconn) => {
+        debug_info("Connected to MQ");
 
 
-        reject("Not yet ready - 002");
+        reject("Not yet ready - 003");
       })
       .catch((err) => {
         debug_warn("Error establising connection to MQ");
