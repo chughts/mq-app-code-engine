@@ -9,6 +9,7 @@ let debug_info = require('debug')('mqapp-approutes:info');
 let debug_warn = require('debug')('mqapp-approutes:warn');
 
 const APPTITLE = 'MQ apps on CodeEngine';
+const DEFAULT_LIMIT = 10;
 
 // GET home page
 router.get('/', (req, res, next) => {
@@ -44,7 +45,7 @@ router.post('/api/mqput', (req, res, next) => {
   if (data.quantity) {
     putRequest.quantity = data.quantity;
     if (putRequest.quantity < 0) {
-      debug_info('negative quantity provided!');
+      debug_info('negating the negative quantity provided!');
       putRequest.quantity *= -1;
     } else if (putRequest.quantity === 0) {
       putRequest.quantity = 1;
@@ -68,5 +69,28 @@ router.post('/api/mqput', (req, res, next) => {
 
 });
 
+
+// GET API expects query input for number of messages to get
+router.get('/api/mqget', function(req, res, next) {
+  debug_info('Routing to /api/mqget');
+
+  let querydata = req.query;
+  debug_info('MQ Get Request submitted for ', querydata);
+
+  let getLimit = DEFAULT_LIMIT;
+  if (querydata && querydata.limit && !isNaN(querydata.limit)) {
+    getLimit = querydata.limit;
+  }
+
+  mqclient.get(getLimit)
+  .then((data) => {
+    res.json(data);
+  })
+  .catch((err) => {
+    res.status(500).send({
+      error: err
+    });
+  });
+});
 
 module.exports = router;
