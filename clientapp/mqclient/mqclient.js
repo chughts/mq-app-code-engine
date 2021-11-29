@@ -17,6 +17,8 @@ let debug_warn = require('debug')('mqapp-mqclient:warn');
 const _HCONNKEY = Symbol('hconn');
 const _HOBJKEY = Symbol('hObj');
 
+const BROWSEWAITINTERVAL = 10 * 1000; // 10 seconds
+
 
 // Load the MQ Endpoint details either from the envrionment or from the
 // env.json file. The envrionment takes precedence.
@@ -124,7 +126,46 @@ class MQClient {
     });
   }
 
+  browse() {
+    return new Promise((resolve, reject) => {
+      this.makeConnectionPromise()
+      .then(() => {
+        debug_info("Connected to MQ");
+        return this.performBrowse();
+      })
+      .then((msgData) => {
+        resolve(msgData);
+      })
+      .catch((err) => {
+        reject(err);
+      })
+    });
+  }
 
+  getById(msgid) {
+    return new Promise((resolve, reject) => {
+      this.makeConnectionPromise()
+      .then(() => {
+        debug_info("Connected to MQ");
+        debug_info("Looking for : ", msgid);
+        return this.performGetById(msgid);
+      })
+      .then((msg) => {
+        if (msg) {
+          debug_info('Message Found ', msg);
+          resolve(msg);
+        } else {
+          debug_warn('No Message found');
+          reject("No Message with specified id found")
+        }
+        resolve(msg);
+      })
+      .catch((err) => {
+        debug_info('Error obtaining message by id ', err);
+        reject(err);
+      })
+    });
+  }
 
 
   // Internal routines
@@ -365,6 +406,60 @@ class MQClient {
   }
 
 
+  performGetById(msgid) {
+    return new Promise((resolve, reject) => {
+      let buf = Buffer.alloc(1024);
+
+      let mqmd = new mq.MQMD();
+      let gmo = new mq.MQGMO();
+
+      gmo.Options = MQC.MQGMO_NO_SYNCPOINT |
+        MQC.MQGMO_NO_WAIT |
+        MQC.MQGMO_CONVERT |
+        MQC.MQGMO_FAIL_IF_QUIESCING;
+
+      gmo.MatchOptions = MQC.MQMO_MATCH_MSG_ID;
+      mqmd.MsgId = this.hexToBytes(msgid);
+
+      mq.GetSync(this[_HOBJKEY], mqmd, gmo, buf, (err, len) => {
+        if (err) {
+          if (err.mqrc == MQC.MQRC_NO_MSG_AVAILABLE) {
+            debug_info("no more messages");
+          } else {
+            debug_warn('Error retrieving message', err);
+          }
+          debug_info('Resolving null from getSingleMessage');
+          resolve(null);
+        } else if (mqmd.Format == "MQSTR") {
+          // The Message from a Synchronouse GET is
+          // a data buffer, which needs to be encoded
+          // into a string, before the underlying
+          // JSON object is extracted.
+          debug_info("String data detected");
+
+          let buffString = decoder.write(buf.slice(0,len))
+
+          let msgObject = null;
+          try {
+            msgObject = JSON.parse(buffString);
+            resolve(msgObject);
+          } catch (err) {
+            debug_info("Error parsing json ", err);
+            debug_info("message <%s>", buffString);
+            resolve({'string_data' : buffString});
+          }
+        } else {
+          debug_info("binary message: " + buf);
+          resolve({'binary_data' : buf});
+        }
+
+      });
+
+    });
+  }
+
+
+
 
   performCleanUp() {
     return new Promise((resolve, reject) => {
@@ -398,6 +493,65 @@ class MQClient {
     });
   }
 
+  performBrowse() {
+    return new Promise((resolve, reject) => {
+      let buf = Buffer.alloc(1024);
+
+      let mqmd = new mq.MQMD();
+      let gmo = new mq.MQGMO();
+
+      gmo.Options = MQC.MQGMO_NO_SYNCPOINT |
+        MQC.MQGMO_NO_WAIT |
+        MQC.MQGMO_CONVERT |
+        MQC.MQGMO_FAIL_IF_QUIESCING;
+
+        gmo.Options |= MQC.MQGMO_BROWSE_FIRST;
+
+        gmo.MatchOptions = MQC.MQMO_NONE;
+        gmo.WaitInterval = BROWSEWAITINTERVAL;
+
+      mq.GetSync(this[_HOBJKEY], mqmd, gmo, buf, (err, len) => {
+        if (err) {
+          if (err.mqrc == MQC.MQRC_NO_MSG_AVAILABLE) {
+            debug_info("no more messages");
+          } else {
+            debug_warn('Error retrieving message', err);
+          }
+          debug_info('Resolving null from getSingleMessage');
+          resolve(null);
+        } else {
+          debug_info("Message Found");
+
+          let msgData = {
+            'Buffer Array' : {
+              'MsgId' : mqmd.MsgId,
+              'CorrelId' : mqmd.CorrelId
+            },
+            'HexStrings' : {
+              'MsgId' : this.toHexString(mqmd.MsgId),
+              'CorrelId' : this.toHexString(mqmd.CorrelId)
+            }
+          }
+
+          debug_info('Message Header retrieved: ', msgData);
+          resolve(msgData);
+        }
+      });
+    });
+  }
+
+
+  toHexString(byteArray) {
+    return byteArray.reduce((output, elem) =>
+      (output + ('0' + elem.toString(16)).slice(-2)),
+      '');
+  }
+
+  hexToBytes(hex) {
+    for (var bytes = [], c = 0; c < hex.length; c += 2)
+      bytes.push(parseInt(hex.substr(c, 2), 16));
+    return bytes;
+  }
 
 
 }

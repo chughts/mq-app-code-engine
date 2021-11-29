@@ -100,4 +100,54 @@ router.get('/api/mqget', function(req, res, next) {
   });
 });
 
+// Getbyid API expects msgid as a query input. The api
+// will attempt to get a message with the specified id.
+router.get('/api/mqgetbyid', function(req, res, next) {
+  debug_info('Routing to /api/mqgetbyid');
+
+  let querydata = req.query;
+  debug_info('MQ Get by id request submitted for ', querydata);
+
+  let msgid = null;
+  if (querydata && querydata.msgid) {
+    msgid = querydata.msgid;
+    res.json({
+      status: 'Request was received'
+    });
+    // No need to tell requester about subsequent processing
+    mqclient.getById(msgid)
+    .then((data) => {
+      debug_info('Message data obtained ready to process ...');
+    })
+    .catch((err) => {
+      debug_info('Unable to obtain message');
+    })
+  } else {
+    res.status(500).send({
+      error: 'request was missing msgid'
+    });
+  }
+
+});
+
+
+function catchDeathSignal() {
+  debug_info('Application is about to die, processing tidy-up');
+  mqclient.performCleanUp()
+  .then(() => {
+    debug_info('Cleanup completed sucessfully');
+    process.exit(0);
+  })
+  .catch((err) => {
+    debug_warn('Cleanup failed! ', err);
+    process.exit(0);
+  })
+
+}
+
+process.on('SIGTERM', catchDeathSignal);
+process.on('SIGINT', catchDeathSignal);
+process.on('SIGHUP', catchDeathSignal);
+
+
 module.exports = router;
