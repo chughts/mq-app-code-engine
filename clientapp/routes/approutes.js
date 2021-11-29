@@ -20,10 +20,17 @@ router.get('/', (req, res, next) => {
 });
 
 
-// GET the put page, containing form for messages to send
+// Put page, containing form for messages to send
 router.get('/mqput', (req, res, next) => {
   debug_info('Routing to /mqput');
   res.render('mqput', {status: ''});
+});
+
+
+// Get page, containing form for numbrer of messages to get
+router.get('/mqget', (req, res, next) => {
+  debug_info('Routing to /mqget');
+  res.render('mqget', {status: ''});
 });
 
 
